@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Salidas de build
+out/
+release/
+dist/
+dist-electron/
+
+# Sistema / editor
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Variables de entorno
+.env
+.env.local
+
+# Configuracion local de Claude Code (no se versiona)
+.claude/

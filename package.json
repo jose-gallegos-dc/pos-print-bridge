@@ -1,0 +1,86 @@
+{
+  "name": "pos-print-bridge",
+  "version": "0.1.0",
+  "description": "Agente local de impresion ESC/POS que conecta un sistema POS con impresoras termicas USB o de red",
+  "author": "Jose Gallegos",
+  "main": "./out/main/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "build:win": "electron-vite build && electron-builder --win",
+    "build:linux": "electron-vite build && electron-builder --linux deb rpm AppImage",
+    "postinstall": "electron-rebuild -f -w usb -w serialport"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.1.6",
+    "@mui/material": "^6.1.6",
+    "cors": "^2.8.5",
+    "electron-store": "^8.2.0",
+    "express": "^4.21.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "serialport": "^12.0.0",
+    "usb": "^2.14.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@electron/rebuild",
+      "electron",
+      "electron-winstaller",
+      "usb",
+      "@serialport/bindings-cpp"
+    ]
+  },
+  "build": {
+    "appId": "com.posprintbridge.app",
+    "productName": "POS Print Bridge",
+    "afterPack": "./build/afterPack.js",
+    "files": [
+      "out/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "packaging/99-pos-print-bridge.rules",
+        "to": "99-pos-print-bridge.rules"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": ["deb", "rpm", "AppImage"],
+      "icon": "assets/icon.png",
+      "category": "Office",
+      "description": "Agente de impresion ESC/POS para punto de venta"
+    },
+    "deb": {
+      "afterInstall": "packaging/postinstall.sh"
+    },
+    "rpm": {
+      "afterInstall": "packaging/postinstall.sh"
+    }
+  }
+}
