@@ -1,0 +1,6 @@
+# Allows non-root users in the "plugdev" group to open USB thermal printers
+# in raw mode (libusb), instead of requiring root or the kernel's usblp driver.
+#
+# usb_interface_class==7 matches the USB Printer Class, so this covers
+# thermal printers from any vendor without needing per-vendor idVendor rules.
+SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="07", MODE="0664", GROUP="plugdev", TAG+="uaccess"
