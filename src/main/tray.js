@@ -22,6 +22,11 @@ function createTray(showWindowFn, app) {
 
   updateTrayMenu(tray, showWindowFn, app, 'starting');
 
+  // setContextMenu() makes the desktop's tray implementation show the menu
+  // on right-click (KDE/Plasma's StatusNotifierItem keeps this separate from
+  // the primary click). 'click' handles the primary (left) click to open the
+  // window; 'double-click' is kept too since Windows/macOS emit it reliably.
+  tray.on('click', () => showWindowFn());
   tray.on('double-click', () => showWindowFn());
 
   return tray;

@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
-import Paper from '@mui/material/Paper';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PrintIcon from '@mui/icons-material/Print';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import InlineMessage, { type Message } from './InlineMessage';
@@ -59,44 +62,46 @@ export default function UsbPrintSection({ deviceKey, onChange }: Props) {
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        Prueba de impresion — USB
-      </Typography>
-      <Stack direction="row" spacing={1}>
-        <TextField
-          select
-          size="small"
-          fullWidth
-          label="Impresora USB"
-          value={deviceKey}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <MenuItem value="">
-            {loading ? 'Buscando dispositivos...' : printers.length === 0 ? 'No se detectaron impresoras USB' : 'Seleccionar impresora...'}
-          </MenuItem>
-          {printers.map((p) => (
-            <MenuItem key={p.deviceKey} value={p.deviceKey}>
-              {(p.product || p.manufacturer ? `${p.product || 'Impresora'}${p.manufacturer ? ` (${p.manufacturer})` : ''}` : 'Impresora USB')}{' '}
-              [{p.deviceKey}]
+    <Accordion variant="outlined" disableGutters>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle2">Prueba de impresion - USB</Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Stack direction="row" spacing={1}>
+          <TextField
+            select
+            size="small"
+            fullWidth
+            label="Impresora USB"
+            value={deviceKey}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <MenuItem value="">
+              {loading ? 'Buscando dispositivos...' : printers.length === 0 ? 'No se detectaron impresoras USB' : 'Seleccionar impresora...'}
             </MenuItem>
-          ))}
-        </TextField>
-        <IconButton onClick={refresh} disabled={loading} title="Refrescar">
-          <RefreshIcon />
-        </IconButton>
-      </Stack>
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: 1.5 }}>
-        <Button
-          variant="contained"
-          startIcon={<PrintIcon />}
-          disabled={sending || !deviceKey}
-          onClick={handleTestPrint}
-        >
-          {sending ? 'Enviando...' : 'Imprimir prueba USB'}
-        </Button>
-      </Stack>
-      <InlineMessage message={message} />
-    </Paper>
+            {printers.map((p) => (
+              <MenuItem key={p.deviceKey} value={p.deviceKey}>
+                {(p.product || p.manufacturer ? `${p.product || 'Impresora'}${p.manufacturer ? ` (${p.manufacturer})` : ''}` : 'Impresora USB')}{' '}
+                [{p.deviceKey}]
+              </MenuItem>
+            ))}
+          </TextField>
+          <IconButton onClick={refresh} disabled={loading} title="Refrescar">
+            <RefreshIcon />
+          </IconButton>
+        </Stack>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: 1.5 }}>
+          <Button
+            variant="contained"
+            startIcon={<PrintIcon />}
+            disabled={sending || !deviceKey}
+            onClick={handleTestPrint}
+          >
+            {sending ? 'Enviando...' : 'Imprimir prueba USB'}
+          </Button>
+        </Stack>
+        <InlineMessage message={message} />
+      </AccordionDetails>
+    </Accordion>
   );
 }

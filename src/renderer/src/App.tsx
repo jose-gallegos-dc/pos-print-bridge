@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Header from './components/Header';
@@ -81,8 +80,6 @@ export default function App() {
           onChange={(portPath) => update({ usbPortPath: portPath })}
         />
 
-        <Divider />
-
         <ConfigSection
           port={config.serverPort}
           launchAtStartup={config.launchAtStartup}
@@ -93,7 +90,7 @@ export default function App() {
         />
 
         <Button variant="contained" color="secondary" size="large" disabled={saving} onClick={handleSave}>
-          {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar configuracion'}
+          {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar configuración'}
         </Button>
       </Stack>
     </Box>
