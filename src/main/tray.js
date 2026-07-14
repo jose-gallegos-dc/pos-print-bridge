@@ -1,5 +1,11 @@
-import { Tray, Menu, nativeImage } from 'electron';
+import { app, Tray, Menu, nativeImage } from 'electron';
 import path from 'node:path';
+
+function getAssetsPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'assets')
+    : path.join(__dirname, '../../assets');
+}
 
 const STATUS_LABELS = {
   running: 'Ejecutando',
@@ -8,8 +14,9 @@ const STATUS_LABELS = {
 };
 
 function createTray(showWindowFn, app) {
-  const trayIconPath = path.join(__dirname, '../../assets/tray-icon.png');
-  const fallbackIconPath = path.join(__dirname, '../../assets/icon.png');
+  const assetsPath = getAssetsPath();
+  const trayIconPath = path.join(assetsPath, 'tray-icon.png');
+  const fallbackIconPath = path.join(assetsPath, 'icon.png');
 
   let icon = nativeImage.createFromPath(trayIconPath);
   if (icon.isEmpty()) icon = nativeImage.createFromPath(fallbackIconPath);

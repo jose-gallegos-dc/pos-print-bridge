@@ -64,6 +64,10 @@
       {
         "from": "packaging/99-pos-print-bridge.rules",
         "to": "99-pos-print-bridge.rules"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
       }
     ],
     "win": {

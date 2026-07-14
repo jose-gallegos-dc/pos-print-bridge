@@ -33,8 +33,14 @@ const store = new Store({
 let mainWindow = null;
 let tray = null;
 
+function getAssetsPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'assets')
+    : path.join(__dirname, '../../assets');
+}
+
 function getAppIcon() {
-  const assetsPath = path.join(__dirname, '../../assets');
+  const assetsPath = getAssetsPath();
   if (process.platform === 'win32') return path.join(assetsPath, 'icon.ico');
   return path.join(assetsPath, 'icon.png');
 }
@@ -98,7 +104,7 @@ if (!gotSingleInstanceLock) {
   });
 
   app.whenReady().then(() => {
-    const dockIconPath = path.join(__dirname, '../../assets/icon.png');
+    const dockIconPath = path.join(getAssetsPath(), 'icon.png');
     if (process.platform === 'darwin' && app.dock) {
       const dockIcon = nativeImage.createFromPath(dockIconPath);
       if (!dockIcon.isEmpty()) app.dock.setIcon(dockIcon);
