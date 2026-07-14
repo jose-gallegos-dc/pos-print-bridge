@@ -2,15 +2,18 @@
   "name": "pos-print-bridge",
   "version": "1.0.0",
   "description": "Agente local de impresion ESC/POS que conecta un sistema POS con impresoras termicas USB o de red",
-  "author": "José Gallegos",
+  "author": {
+    "name": "José Gallegos",
+    "email": "jose.gallegos.delcarpio@gmail.com"
+  },
   "main": "./out/main/index.js",
   "type": "commonjs",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "build:win": "electron-vite build && electron-builder --win",
-    "build:linux": "electron-vite build && electron-builder --linux deb rpm AppImage",
+    "build:win": "electron-vite build && electron-builder --win --publish=never",
+    "build:linux": "electron-vite build && electron-builder --linux deb rpm AppImage --publish=never",
     "postinstall": "cross-env CXXFLAGS=-std=gnu++20 electron-rebuild -f -w usb,serialport"
   },
   "dependencies": {
