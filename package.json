@@ -2,6 +2,7 @@
   "name": "pos-print-bridge",
   "version": "1.0.0",
   "description": "Agente local de impresion ESC/POS que conecta un sistema POS con impresoras termicas USB o de red",
+  "license": "MIT",
   "author": {
     "name": "José Gallegos",
     "email": "jose.gallegos.delcarpio@gmail.com"

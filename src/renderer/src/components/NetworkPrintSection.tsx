@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -20,9 +20,10 @@ export default function NetworkPrintSection({ ip, port, onChange }: Props) {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
 
+  useEffect(() => window.agent.onWindowShown(() => setMessage(null)), []);
+
   async function handleTestPrint() {
     setSending(true);
-    setMessage(null);
 
     try {
       await window.agent.saveConfig({ testPrinterIp: ip, testPrinterPort: port });

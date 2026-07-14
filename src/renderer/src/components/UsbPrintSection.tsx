@@ -38,14 +38,29 @@ export default function UsbPrintSection({ deviceKey, onChange }: Props) {
     refresh();
   }, [refresh]);
 
+  useEffect(
+    () =>
+      window.agent.onWindowShown(() => {
+        setMessage(null);
+        refresh();
+      }),
+    [refresh],
+  );
+
+  const deviceMissing = !loading && !!deviceKey && !printers.some((p) => p.deviceKey === deviceKey);
+
   async function handleTestPrint() {
     if (!deviceKey) {
       setMessage({ type: 'error', text: 'Selecciona una impresora USB' });
       return;
     }
 
+    if (deviceMissing) {
+      setMessage({ type: 'error', text: 'La impresora seleccionada ya no esta conectada. Elige otra de la lista.' });
+      return;
+    }
+
     setSending(true);
-    setMessage(null);
 
     try {
       await window.agent.saveConfig({ usbDeviceKey: deviceKey });
@@ -85,6 +100,9 @@ export default function UsbPrintSection({ deviceKey, onChange }: Props) {
                 [{p.deviceKey}]
               </MenuItem>
             ))}
+            {deviceMissing && (
+              <MenuItem value={deviceKey}>[{deviceKey}] (desconectada)</MenuItem>
+            )}
           </TextField>
           <IconButton onClick={refresh} disabled={loading} title="Refrescar">
             <RefreshIcon />
@@ -94,13 +112,20 @@ export default function UsbPrintSection({ deviceKey, onChange }: Props) {
           <Button
             variant="contained"
             startIcon={<PrintIcon />}
-            disabled={sending || !deviceKey}
+            disabled={sending || !deviceKey || deviceMissing}
             onClick={handleTestPrint}
           >
             {sending ? 'Enviando...' : 'Imprimir prueba USB'}
           </Button>
         </Stack>
-        <InlineMessage message={message} />
+        <InlineMessage
+          message={
+            message ??
+            (deviceMissing
+              ? { type: 'error', text: 'La impresora configurada ya no esta conectada. Elige otra de la lista.' }
+              : null)
+          }
+        />
       </AccordionDetails>
     </Accordion>
   );

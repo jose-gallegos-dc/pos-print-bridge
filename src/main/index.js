@@ -83,6 +83,12 @@ function createWindow() {
       mainWindow.hide();
     }
   });
+
+  // The window is hidden (not destroyed) on close, so the renderer keeps its
+  // state across reopenings. Notify it so stale test results get cleared.
+  mainWindow.on('show', () => {
+    mainWindow.webContents.send('window-shown');
+  });
 }
 
 function showWindow() {

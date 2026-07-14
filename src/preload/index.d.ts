@@ -37,6 +37,7 @@ export interface AgentApi {
   listUsbPrinters(): Promise<UsbPrinterInfo[]>;
   getSerialPorts(): Promise<SerialPortInfo[]>;
   getVersion(): Promise<string>;
+  onWindowShown(callback: () => void): () => void;
 }
 
 declare global {

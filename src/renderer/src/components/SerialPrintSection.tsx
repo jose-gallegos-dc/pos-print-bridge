@@ -38,6 +38,15 @@ export default function SerialPrintSection({ portPath, onChange }: Props) {
     refresh();
   }, [refresh]);
 
+  useEffect(
+    () =>
+      window.agent.onWindowShown(() => {
+        setMessage(null);
+        refresh();
+      }),
+    [refresh],
+  );
+
   async function handleTestPrint() {
     if (!portPath) {
       setMessage({ type: 'error', text: 'Selecciona un puerto serial' });
@@ -45,7 +54,6 @@ export default function SerialPrintSection({ portPath, onChange }: Props) {
     }
 
     setSending(true);
-    setMessage(null);
 
     try {
       await window.agent.saveConfig({ usbPortPath: portPath });

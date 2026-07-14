@@ -8,4 +8,9 @@ contextBridge.exposeInMainWorld('agent', {
   listUsbPrinters: () => ipcRenderer.invoke('list-usb-printers'),
   getSerialPorts: () => ipcRenderer.invoke('get-serial-ports'),
   getVersion: () => ipcRenderer.invoke('get-version'),
+  onWindowShown: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('window-shown', listener);
+    return () => ipcRenderer.removeListener('window-shown', listener);
+  },
 });
