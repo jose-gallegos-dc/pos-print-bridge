@@ -7,6 +7,16 @@ import { createServer, stopServer } from './server';
 import { createTray, updateTrayStatus } from './tray';
 import { applyAutostart } from './autostart';
 import {
+  initUpdater,
+  checkForUpdates,
+  downloadUpdate,
+  installUpdate,
+  openReleasePage,
+  getUpdateStatus,
+  onUpdateStatus,
+  canSelfUpdate,
+} from './updater';
+import {
   printNetwork,
   printUsb,
   printSerial,
@@ -128,6 +138,13 @@ if (!gotSingleInstanceLock) {
 
     applyAutostart(store.get('launchAtStartup'));
 
+    initUpdater();
+    onUpdateStatus((status) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-status', status);
+      }
+    });
+
     ipcMain.handle('get-config', () => store.store);
 
     ipcMain.handle('save-config', (_event, config) => {
@@ -184,6 +201,13 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle('list-usb-printers', () => listUsbPrinters());
     ipcMain.handle('get-serial-ports', () => listSerialPorts());
     ipcMain.handle('get-version', () => app.getVersion());
+
+    ipcMain.handle('check-for-updates', () => checkForUpdates());
+    ipcMain.handle('download-update', () => downloadUpdate());
+    ipcMain.handle('install-update', () => installUpdate());
+    ipcMain.handle('open-release-page', (_event, url) => openReleasePage(url));
+    ipcMain.handle('get-update-status', () => getUpdateStatus());
+    ipcMain.handle('can-self-update', () => canSelfUpdate());
 
     // Don't create the window on startup — just the tray icon.
     // User opens the config window from the tray menu.

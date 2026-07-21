@@ -13,4 +13,15 @@ contextBridge.exposeInMainWorld('agent', {
     ipcRenderer.on('window-shown', listener);
     return () => ipcRenderer.removeListener('window-shown', listener);
   },
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  openReleasePage: (url) => ipcRenderer.invoke('open-release-page', url),
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+  canSelfUpdate: () => ipcRenderer.invoke('can-self-update'),
+  onUpdateStatus: (callback) => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('update-status', listener);
+    return () => ipcRenderer.removeListener('update-status', listener);
+  },
 });

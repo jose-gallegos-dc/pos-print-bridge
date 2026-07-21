@@ -5,6 +5,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Header from './components/Header';
 import StatusBar from './components/StatusBar';
+import UpdateSection from './components/UpdateSection';
 import NetworkPrintSection from './components/NetworkPrintSection';
 import UsbPrintSection from './components/UsbPrintSection';
 import SerialPrintSection from './components/SerialPrintSection';
@@ -62,6 +63,9 @@ export default function App() {
     <Box sx={{ height: '100vh', overflow: 'auto', bgcolor: 'background.default' }}>
       <Header version={version} />
       <StatusBar port={config.serverPort} />
+      <Box sx={{ mt: 1 }}>
+        <UpdateSection />
+      </Box>
 
       <Stack spacing={2} sx={{ p: 2 }}>
         <NetworkPrintSection

@@ -4,6 +4,26 @@ import path from 'node:path';
 import { app } from 'electron';
 
 /**
+ * Resolves the path that the autostart entry should launch.
+ * - AppImage: process.env.APPIMAGE is the outer .AppImage file.
+ * - deb/rpm: process.execPath resolves to "<name>.bin", the real Electron
+ *   binary that build/afterPack.js renames it to. The original path is a
+ *   wrapper script that sets ELECTRON_DISABLE_SANDBOX=1 (chrome-sandbox isn't
+ *   installed SUID-root, so launching the .bin directly crashes on startup).
+ *   Autostart must go through that wrapper, same as the desktop launcher does.
+ */
+function resolveLinuxExecPath() {
+  if (process.env.APPIMAGE) return process.env.APPIMAGE;
+
+  const execPath = process.execPath;
+  if (execPath.endsWith('.bin')) {
+    const wrapper = execPath.slice(0, -'.bin'.length);
+    if (fs.existsSync(wrapper)) return wrapper;
+  }
+  return execPath;
+}
+
+/**
  * Enables/disables launch-at-login.
  * - Linux: writes/removes an XDG autostart .desktop entry (setLoginItemSettings
  *   is a no-op on Linux in Electron).
@@ -16,8 +36,7 @@ function applyAutostart(enable) {
 
     if (enable) {
       fs.mkdirSync(autostartDir, { recursive: true });
-      // process.env.APPIMAGE is set by the AppImage runtime and contains the real .AppImage file path
-      const execPath = process.env.APPIMAGE || process.execPath;
+      const execPath = resolveLinuxExecPath();
       const execEntry = execPath.includes(' ') ? `"${execPath}"` : execPath;
       const content = [
         '[Desktop Entry]',
