@@ -32,6 +32,24 @@ const WINDOW_HEIGHT = 720;
 
 app.setName('POS Print Bridge');
 
+// This is a background agent that must keep the HTTP print server alive
+// indefinitely. It has no need for GPU-accelerated rendering (a small
+// settings window), and Chromium's GPU process is a common source of fatal,
+// whole-process crashes on monitor hotplug/reconfiguration (Linux) or driver
+// resets after sleep on hybrid-graphics laptops (Windows) — "GPU process
+// isn't usable. Goodbye." Disabling it removes that failure mode entirely.
+app.disableHardwareAcceleration();
+
+// A single uncaught error anywhere (printer/server code, a dependency) would
+// otherwise take down the whole process — and with it the print server.
+// Log and keep running instead of dying silently.
+process.on('uncaughtException', (err) => {
+  console.error('Excepcion no capturada:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Promesa rechazada sin manejar:', reason);
+});
+
 const store = new Store({
   defaults: {
     serverPort: 5100,
