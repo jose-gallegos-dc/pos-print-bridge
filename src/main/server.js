@@ -8,35 +8,21 @@ const APP_VERSION = electronApp.getVersion();
 let server = null;
 let lastPrintResult = null;
 
-/**
- * Requires a matching X-Agent-Token header on every request except /health.
- * The agent listens only on 127.0.0.1, but the token stops other local
- * processes/tabs on the same machine from printing without consent.
- */
-function requireToken(store) {
-  return (req, res, next) => {
-    const expected = store.get('agentToken');
-    if (!expected) return next();
-
-    const provided = req.get('X-Agent-Token');
-    if (provided !== expected) {
-      return res.status(401).json({ success: false, error: 'Token invalido o ausente (header X-Agent-Token)' });
-    }
-    next();
-  };
-}
-
 function createServer(port, store) {
   const app = express();
 
   app.use(cors());
+  // Chrome Private Network Access: permite que páginas HTTPS públicas (pos.envasesunifam.com)
+  // se conecten a 127.0.0.1 sin ser bloqueadas por el navegador.
+  app.use((_req, res, next) => {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    next();
+  });
   app.use(express.json({ limit: '5mb' }));
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', version: APP_VERSION });
   });
-
-  app.use(requireToken(store));
 
   app.get('/status', (_req, res) => {
     res.json({ status: 'ok', version: APP_VERSION, lastPrint: lastPrintResult });

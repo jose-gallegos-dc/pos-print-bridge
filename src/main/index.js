@@ -54,7 +54,6 @@ const store = new Store({
   defaults: {
     serverPort: 5100,
     launchAtStartup: false,
-    agentToken: crypto.randomBytes(16).toString('hex'),
   },
 });
 
@@ -176,12 +175,6 @@ if (!gotSingleInstanceLock) {
       if (config.usbDeviceKey) store.set('usbDeviceKey', config.usbDeviceKey);
       if (config.usbPortPath) store.set('usbPortPath', config.usbPortPath);
       return { success: true };
-    });
-
-    ipcMain.handle('regenerate-token', () => {
-      const token = crypto.randomBytes(16).toString('hex');
-      store.set('agentToken', token);
-      return token;
     });
 
     ipcMain.handle('test-print', async (_event, connectionType) => {

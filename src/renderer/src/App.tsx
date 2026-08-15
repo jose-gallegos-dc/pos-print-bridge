@@ -54,11 +54,6 @@ export default function App() {
     }
   }
 
-  async function handleRegenerateToken() {
-    const token = await window.agent.regenerateToken();
-    update({ agentToken: token });
-  }
-
   return (
     <Box sx={{ height: '100vh', overflow: 'auto', bgcolor: 'background.default' }}>
       <Header version={version} />
@@ -87,10 +82,8 @@ export default function App() {
         <ConfigSection
           port={config.serverPort}
           launchAtStartup={config.launchAtStartup}
-          agentToken={config.agentToken}
           onPortChange={(port) => update({ serverPort: port })}
           onLaunchAtStartupChange={(value) => update({ launchAtStartup: value })}
-          onRegenerateToken={handleRegenerateToken}
         />
 
         <Button variant="contained" color="secondary" size="large" disabled={saving} onClick={handleSave}>

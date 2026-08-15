@@ -1,7 +1,6 @@
 export interface AgentConfig {
   serverPort: number;
   launchAtStartup: boolean;
-  agentToken: string;
   testPrinterIp?: string;
   testPrinterPort?: number;
   usbDeviceKey?: string;
@@ -42,7 +41,6 @@ export type UpdateStatus =
 export interface AgentApi {
   getConfig(): Promise<AgentConfig>;
   saveConfig(config: Partial<AgentConfig>): Promise<{ success: boolean }>;
-  regenerateToken(): Promise<string>;
   testPrint(connectionType: 'network' | 'usb' | 'serial'): Promise<TestPrintResult>;
   listUsbPrinters(): Promise<UsbPrinterInfo[]>;
   getSerialPorts(): Promise<SerialPortInfo[]>;
