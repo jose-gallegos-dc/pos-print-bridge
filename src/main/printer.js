@@ -49,14 +49,28 @@ function withQueue(key, fn) {
 // ─── Windows Spooler — persistent PowerShell process ─────────────────────────
 //
 // Spawned once on first print (or pre-warmed on app start).
-// Initialization: Add-Type C# compilation + Get-Printer  → ~3 s (one-time).
-// Subsequent prints: write temp file path to stdin → response on stdout → ~300 ms.
+// Initialization: Add-Type C# compilation → ~3 s (one-time).
+// Subsequent prints: write "<printer name>\n<temp file path>\n" to stdin →
+// response on stdout → ~300 ms. The target printer is never auto-detected —
+// it's whatever setWinTargetPrinter() was last called with (the user's
+// explicit choice from the installed-printers list), so a new/renamed
+// printer, or an unrelated virtual printer like OneNote, can never be picked
+// by accident.
 //
 let _winProc = null;
 let _winRl = null;
-let _winPrinterName = null;
 let _winInitPromise = null;
 let _winPending = null;
+let _winTargetPrinterName = null;
+
+/**
+ * Sets which Windows-installed printer raw USB print jobs are sent to.
+ * Takes effect on the very next print job — no restart of the spooler
+ * process needed.
+ */
+function setWinTargetPrinter(name) {
+  _winTargetPrinterName = name || null;
+}
 
 const _WIN_PS_SCRIPT = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -106,22 +120,17 @@ public class RawPrint {
 }
 '@
 
-$p = Get-Printer | Where-Object { $_.PortName -like 'USB*' } | Select-Object -First 1
-if (-not $p) { $p = Get-Printer | Where-Object { $_.Type -eq 'Local' } | Select-Object -First 1 }
-if ($p) {
-    $global:printerName = $p.Name
-    [Console]::Out.WriteLine("INIT_OK:$($p.Name)")
-} else {
-    [Console]::Out.WriteLine('INIT_ERROR:No se encontro ninguna impresora local instalada')
-}
+[Console]::Out.WriteLine('INIT_OK')
 [Console]::Out.Flush()
 
 while ($true) {
-    $line = [Console]::In.ReadLine()
-    if ($null -eq $line -or $line -eq 'EXIT') { break }
+    $printerName = [Console]::In.ReadLine()
+    if ($null -eq $printerName -or $printerName -eq 'EXIT') { break }
+    $filePath = [Console]::In.ReadLine()
+    if ($null -eq $filePath) { break }
     try {
-        $bytes = [System.IO.File]::ReadAllBytes($line)
-        $ok = [RawPrint]::Print($global:printerName, $bytes)
+        $bytes = [System.IO.File]::ReadAllBytes($filePath)
+        $ok = [RawPrint]::Print($printerName, $bytes)
         if ($ok) { [Console]::Out.WriteLine('OK') }
         else      { [Console]::Out.WriteLine('ERROR:WritePrinter returned false') }
     } catch {
@@ -165,18 +174,12 @@ function _getWinInitPromise() {
       if (!line) return;
 
       if (!initialized) {
-        if (line.startsWith('INIT_OK:')) {
+        if (line === 'INIT_OK') {
           clearTimeout(timer);
           initialized = true;
           _winProc = ps;
           _winRl = rl;
-          _winPrinterName = line.slice(8);
           resolve();
-        } else if (line.startsWith('INIT_ERROR:')) {
-          clearTimeout(timer);
-          _winInitPromise = null;
-          ps.kill();
-          reject(new Error(line.slice(11)));
         }
       } else if (_winPending) {
         const { resolve: res, reject: rej } = _winPending;
@@ -276,10 +279,10 @@ function printNetworkOnce(host, port, data) {
 }
 
 // All USB jobs share one queue key regardless of deviceKey: on Windows the
-// spooler always targets the single already-resolved printer no matter what
-// deviceKey is passed, so per-key queuing would still let two Windows jobs
-// race each other. On Linux/macOS there's normally one physical USB printer
-// configured anyway, so sharing the key costs nothing in practice.
+// spooler always targets the printer set via setWinTargetPrinter(), no matter
+// what deviceKey is passed, so per-key queuing would still let two Windows
+// jobs race each other. On Linux/macOS there's normally one physical USB
+// printer configured anyway, so sharing the key costs nothing in practice.
 function printUsb(deviceKey, data) {
   return withQueue('usb', () => withRetry('Impresion USB', () => printUsbOnce(deviceKey, data)));
 }
@@ -287,8 +290,12 @@ function printUsb(deviceKey, data) {
 /**
  * Send raw bytes to a USB printer.
  * - Windows: uses a persistent PowerShell process with the Windows Spooler API
- *   (libusb bulk transfer is blocked by usbprint.sys on Windows).
- * - Linux/macOS: uses libusb bulk transfer directly.
+ *   (libusb bulk transfer is blocked by usbprint.sys on Windows). The target
+ *   printer name comes from setWinTargetPrinter() (the user's explicit choice
+ *   in Settings) — deviceKey is ignored here on purpose, since a raw USB
+ *   vendor/product id can't be reliably mapped back to a Windows print queue.
+ * - Linux/macOS: uses libusb bulk transfer directly, addressed by deviceKey
+ *   (vendorId:productId).
  */
 async function printUsbOnce(deviceKey, data) {
   if (process.platform === 'win32') {
@@ -365,10 +372,16 @@ async function printUsbOnce(deviceKey, data) {
 
 /**
  * Windows: send raw ESC/POS bytes via the persistent PowerShell spooler process.
- * Writes data to a temp file, sends the path to the PS process via stdin,
- * and waits for an OK / ERROR response on stdout.
+ * Writes data to a temp file, sends "<printer name>\n<temp file path>\n" to the
+ * PS process via stdin, and waits for an OK / ERROR response on stdout.
  */
 async function printUsbWindowsPort(data) {
+  if (!_winTargetPrinterName) {
+    throw new Error(
+      'No hay impresora de Windows configurada. Abre el agente, ve a la pestana USB y selecciona la impresora instalada.',
+    );
+  }
+
   const fs = require('fs');
   const os = require('os');
   const path = require('path');
@@ -390,7 +403,7 @@ async function printUsbWindowsPort(data) {
         reject: (err) => { clearTimeout(timer); reject(err); },
       };
 
-      _winProc.stdin.write(tmpFile + '\n');
+      _winProc.stdin.write(_winTargetPrinterName + '\n' + tmpFile + '\n');
     });
   } finally {
     try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
@@ -420,6 +433,39 @@ function findPrinterInterface(device) {
     // Device may not be accessible
   }
   return null;
+}
+
+/**
+ * Windows only: list printers installed in Windows (Get-Printer), so the
+ * user can pick the exact target for printUsbWindowsPort() by name instead
+ * of the app guessing from the port name — Epson's APD driver names its
+ * port "TMUSB001", Star's driver names it differently, and a system printer
+ * like OneNote also shows up as a local printer, so no naming pattern is
+ * safe to guess from.
+ */
+function listWindowsPrinters() {
+  if (process.platform !== 'win32') return Promise.resolve([]);
+
+  return new Promise((resolve) => {
+    const { spawn } = require('child_process');
+    const ps = spawn('powershell', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      'Get-Printer | Select-Object Name,PortName | ConvertTo-Json -Compress',
+    ]);
+
+    let out = '';
+    ps.stdout.on('data', (chunk) => { out += chunk; });
+    ps.on('close', () => {
+      try {
+        const parsed = JSON.parse(out || '[]');
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        resolve(list.filter(Boolean).map((p) => ({ name: p.Name, portName: p.PortName })));
+      } catch {
+        resolve([]);
+      }
+    });
+    ps.on('error', () => resolve([]));
+  });
 }
 
 /**
@@ -591,8 +637,10 @@ export {
   printUsb,
   printSerial,
   listUsbPrinters,
+  listWindowsPrinters,
   listSerialPorts,
   generateTestPage,
   prewarmWinSpooler,
   cleanupWinSpooler,
+  setWinTargetPrinter,
 };

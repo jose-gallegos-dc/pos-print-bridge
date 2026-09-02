@@ -21,10 +21,12 @@ import {
   printUsb,
   printSerial,
   listUsbPrinters,
+  listWindowsPrinters,
   listSerialPorts,
   generateTestPage,
   prewarmWinSpooler,
   cleanupWinSpooler,
+  setWinTargetPrinter,
 } from './printer';
 
 const WINDOW_WIDTH = 480;
@@ -148,8 +150,10 @@ if (!gotSingleInstanceLock) {
     tray = createTray(showWindow, app);
     updateTrayStatus(tray, 'running');
 
-    // Pre-warm the Windows spooler so the first print is fast (~300ms vs ~3s).
+    // Pre-warm the Windows spooler so the first print is fast (~300ms vs ~3s),
+    // and point it at whichever printer was last configured in Settings.
     if (process.platform === 'win32') {
+      setWinTargetPrinter(store.get('winPrinterName'));
       prewarmWinSpooler();
     }
 
@@ -174,6 +178,10 @@ if (!gotSingleInstanceLock) {
       if (config.testPrinterPort) store.set('testPrinterPort', config.testPrinterPort);
       if (config.usbDeviceKey) store.set('usbDeviceKey', config.usbDeviceKey);
       if (config.usbPortPath) store.set('usbPortPath', config.usbPortPath);
+      if (config.winPrinterName) {
+        store.set('winPrinterName', config.winPrinterName);
+        if (process.platform === 'win32') setWinTargetPrinter(config.winPrinterName);
+      }
       return { success: true };
     });
 
@@ -183,7 +191,11 @@ if (!gotSingleInstanceLock) {
         const config = store.store;
 
         if (connectionType === 'usb') {
-          if (!config.usbDeviceKey) {
+          if (process.platform === 'win32') {
+            if (!config.winPrinterName) {
+              return { success: false, error: 'No hay impresora de Windows seleccionada.' };
+            }
+          } else if (!config.usbDeviceKey) {
             return { success: false, error: 'No hay dispositivo USB seleccionado.' };
           }
           await printUsb(config.usbDeviceKey, testData);
@@ -210,6 +222,7 @@ if (!gotSingleInstanceLock) {
     });
 
     ipcMain.handle('list-usb-printers', () => listUsbPrinters());
+    ipcMain.handle('list-windows-printers', () => listWindowsPrinters());
     ipcMain.handle('get-serial-ports', () => listSerialPorts());
     ipcMain.handle('get-version', () => app.getVersion());
 

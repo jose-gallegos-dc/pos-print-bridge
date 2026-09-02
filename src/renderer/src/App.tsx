@@ -66,6 +66,8 @@ export default function App() {
           onNetworkChange={(ip, port) => update({ testPrinterIp: ip, testPrinterPort: port })}
           deviceKey={config.usbDeviceKey || ''}
           onUsbChange={(deviceKey) => update({ usbDeviceKey: deviceKey })}
+          winPrinterName={config.winPrinterName || ''}
+          onWinPrinterChange={(name) => update({ winPrinterName: name })}
           portPath={config.usbPortPath || ''}
           onSerialChange={(portPath) => update({ usbPortPath: portPath })}
         />

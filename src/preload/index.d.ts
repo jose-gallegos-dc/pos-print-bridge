@@ -5,6 +5,7 @@ export interface AgentConfig {
   testPrinterPort?: number;
   usbDeviceKey?: string;
   usbPortPath?: string;
+  winPrinterName?: string;
 }
 
 export interface UsbPrinterInfo {
@@ -13,6 +14,11 @@ export interface UsbPrinterInfo {
   productId: string;
   manufacturer: string;
   product: string;
+}
+
+export interface WindowsPrinterInfo {
+  name: string;
+  portName: string;
 }
 
 export interface SerialPortInfo {
@@ -39,10 +45,12 @@ export type UpdateStatus =
   | { state: 'error'; message: string };
 
 export interface AgentApi {
+  platform: NodeJS.Platform;
   getConfig(): Promise<AgentConfig>;
   saveConfig(config: Partial<AgentConfig>): Promise<{ success: boolean }>;
   testPrint(connectionType: 'network' | 'usb' | 'serial'): Promise<TestPrintResult>;
   listUsbPrinters(): Promise<UsbPrinterInfo[]>;
+  listWindowsPrinters(): Promise<WindowsPrinterInfo[]>;
   getSerialPorts(): Promise<SerialPortInfo[]>;
   getVersion(): Promise<string>;
   onWindowShown(callback: () => void): () => void;

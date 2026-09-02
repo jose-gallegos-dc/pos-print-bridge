@@ -57,9 +57,14 @@ function createServer(port, store) {
       return res.status(400).json({ success: false, error: 'Falta el campo "data" (bytes ESC/POS en base64)' });
     }
 
-    const deviceKey = vendorId && productId
-      ? `${vendorId.replace(/^0x/, '')}:${productId.replace(/^0x/, '')}`
-      : store.get('usbDeviceKey');
+    // On Windows the target is always the printer configured in Settings
+    // (winPrinterName) — a raw USB vendorId/productId can't be mapped back
+    // to a Windows print queue, so it's ignored there even if the client sends it.
+    const deviceKey = process.platform === 'win32'
+      ? store.get('winPrinterName')
+      : (vendorId && productId
+        ? `${vendorId.replace(/^0x/, '')}:${productId.replace(/^0x/, '')}`
+        : store.get('usbDeviceKey'));
 
     if (!deviceKey) {
       return res.status(400).json({ success: false, error: 'No hay impresora USB configurada. Abre el agente y selecciona una.' });

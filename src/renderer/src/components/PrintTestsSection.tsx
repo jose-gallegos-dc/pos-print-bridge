@@ -13,6 +13,8 @@ interface Props {
   onNetworkChange: (ip: string, port: number) => void;
   deviceKey: string;
   onUsbChange: (deviceKey: string) => void;
+  winPrinterName: string;
+  onWinPrinterChange: (name: string) => void;
   portPath: string;
   onSerialChange: (portPath: string) => void;
 }
@@ -23,6 +25,8 @@ export default function PrintTestsSection({
   onNetworkChange,
   deviceKey,
   onUsbChange,
+  winPrinterName,
+  onWinPrinterChange,
   portPath,
   onSerialChange,
 }: Props) {
@@ -41,7 +45,14 @@ export default function PrintTestsSection({
       </Tabs>
       <Box sx={{ p: 2 }}>
         {tab === 0 && <NetworkPrintSection ip={ip} port={port} onChange={onNetworkChange} />}
-        {tab === 1 && <UsbPrintSection deviceKey={deviceKey} onChange={onUsbChange} />}
+        {tab === 1 && (
+          <UsbPrintSection
+            deviceKey={deviceKey}
+            onChange={onUsbChange}
+            winPrinterName={winPrinterName}
+            onWinPrinterChange={onWinPrinterChange}
+          />
+        )}
         {tab === 2 && <SerialPrintSection portPath={portPath} onChange={onSerialChange} />}
       </Box>
     </Paper>
