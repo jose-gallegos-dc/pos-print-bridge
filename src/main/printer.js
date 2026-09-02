@@ -2,6 +2,49 @@ import net from 'node:net';
 
 const NETWORK_TIMEOUT = 5000;
 const USB_TIMEOUT = 5000;
+const RETRY_ATTEMPTS = 3;
+const RETRY_DELAY = 1200;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retries a transient failure up to RETRY_ATTEMPTS times, ~RETRY_DELAY apart.
+ * Covers momentary glitches (printer busy finishing the previous job, brief
+ * disconnect) that a single attempt would otherwise report as an outright
+ * print failure.
+ */
+async function withRetry(label, fn) {
+  let lastError;
+  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      console.error(`${label}: intento ${attempt}/${RETRY_ATTEMPTS} fallo (${err.message})`);
+      if (attempt < RETRY_ATTEMPTS) {
+        await delay(RETRY_DELAY);
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Serializes print jobs per target (usb device / host:port / serial path) so
+// two requests in flight at once can never race each other — e.g. the
+// Windows USB spooler corrupting its single pending-response slot, two TCP
+// sockets hitting the same network printer at once, or two opens racing on
+// the same serial port. Each of those looked like a random, unexplained
+// failure on one ticket out of many before this queue existed.
+const _queues = new Map();
+
+function withQueue(key, fn) {
+  const prev = _queues.get(key) || Promise.resolve();
+  const job = prev.then(fn, fn);
+  _queues.set(key, job.then(() => undefined, () => undefined));
+  return job;
+}
 
 // ─── Windows Spooler — persistent PowerShell process ─────────────────────────
 //
@@ -193,6 +236,12 @@ function cleanupWinSpooler() {
  * Send raw bytes to a network printer via TCP socket.
  */
 function printNetwork(host, port, data) {
+  return withQueue(`network:${host}:${port}`, () =>
+    withRetry('Impresion de red', () => printNetworkOnce(host, port, data)),
+  );
+}
+
+function printNetworkOnce(host, port, data) {
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
     let settled = false;
@@ -226,13 +275,22 @@ function printNetwork(host, port, data) {
   });
 }
 
+// All USB jobs share one queue key regardless of deviceKey: on Windows the
+// spooler always targets the single already-resolved printer no matter what
+// deviceKey is passed, so per-key queuing would still let two Windows jobs
+// race each other. On Linux/macOS there's normally one physical USB printer
+// configured anyway, so sharing the key costs nothing in practice.
+function printUsb(deviceKey, data) {
+  return withQueue('usb', () => withRetry('Impresion USB', () => printUsbOnce(deviceKey, data)));
+}
+
 /**
  * Send raw bytes to a USB printer.
  * - Windows: uses a persistent PowerShell process with the Windows Spooler API
  *   (libusb bulk transfer is blocked by usbprint.sys on Windows).
  * - Linux/macOS: uses libusb bulk transfer directly.
  */
-async function printUsb(deviceKey, data) {
+async function printUsbOnce(deviceKey, data) {
   if (process.platform === 'win32') {
     return await printUsbWindowsPort(data);
   }
@@ -463,7 +521,13 @@ async function listSerialPorts() {
 /**
  * Send raw bytes to a serial port (for RS232 or USB-to-serial printers).
  */
-async function printSerial(portPath, data) {
+function printSerial(portPath, data) {
+  return withQueue(`serial:${portPath}`, () =>
+    withRetry('Impresion serial', () => printSerialOnce(portPath, data)),
+  );
+}
+
+async function printSerialOnce(portPath, data) {
   const { SerialPort } = require('serialport');
 
   return new Promise((resolve, reject) => {

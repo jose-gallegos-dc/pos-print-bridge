@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Header from './components/Header';
 import StatusBar from './components/StatusBar';
 import UpdateSection from './components/UpdateSection';
-import NetworkPrintSection from './components/NetworkPrintSection';
-import UsbPrintSection from './components/UsbPrintSection';
-import SerialPrintSection from './components/SerialPrintSection';
+import PrintTestsSection from './components/PrintTestsSection';
 import ConfigSection from './components/ConfigSection';
 import type { AgentConfig } from '../../preload';
 
@@ -63,20 +60,14 @@ export default function App() {
       </Box>
 
       <Stack spacing={2} sx={{ p: 2 }}>
-        <NetworkPrintSection
+        <PrintTestsSection
           ip={config.testPrinterIp || ''}
           port={config.testPrinterPort || 9100}
-          onChange={(ip, port) => update({ testPrinterIp: ip, testPrinterPort: port })}
-        />
-
-        <UsbPrintSection
+          onNetworkChange={(ip, port) => update({ testPrinterIp: ip, testPrinterPort: port })}
           deviceKey={config.usbDeviceKey || ''}
-          onChange={(deviceKey) => update({ usbDeviceKey: deviceKey })}
-        />
-
-        <SerialPrintSection
+          onUsbChange={(deviceKey) => update({ usbDeviceKey: deviceKey })}
           portPath={config.usbPortPath || ''}
-          onChange={(portPath) => update({ usbPortPath: portPath })}
+          onSerialChange={(portPath) => update({ usbPortPath: portPath })}
         />
 
         <ConfigSection
@@ -84,11 +75,10 @@ export default function App() {
           launchAtStartup={config.launchAtStartup}
           onPortChange={(port) => update({ serverPort: port })}
           onLaunchAtStartupChange={(value) => update({ launchAtStartup: value })}
+          saving={saving}
+          saved={saved}
+          onSave={handleSave}
         />
-
-        <Button variant="contained" color="secondary" size="large" disabled={saving} onClick={handleSave}>
-          {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar configuración'}
-        </Button>
       </Stack>
     </Box>
   );

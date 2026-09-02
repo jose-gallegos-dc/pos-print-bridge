@@ -27,7 +27,13 @@ function createTray(showWindowFn, app) {
   const tray = new Tray(icon);
   tray.setToolTip('POS Print Bridge');
 
-  updateTrayMenu(tray, showWindowFn, app, 'starting');
+  // Keep these closed over so updateTrayStatus() can rebuild the context
+  // menu later — Tray itself has no way to hand them back to us.
+  tray._setStatus = (status) => {
+    tray.setToolTip(`POS Print Bridge - ${STATUS_LABELS[status] || status}`);
+    updateTrayMenu(tray, showWindowFn, app, status);
+  };
+  tray._setStatus('starting');
 
   // setContextMenu() makes the desktop's tray implementation show the menu
   // on right-click (KDE/Plasma's StatusNotifierItem keeps this separate from
@@ -40,7 +46,7 @@ function createTray(showWindowFn, app) {
 }
 
 function updateTrayStatus(tray, status) {
-  tray.setToolTip(`POS Print Bridge - ${STATUS_LABELS[status] || status}`);
+  tray._setStatus(status);
 }
 
 function updateTrayMenu(tray, showWindowFn, app, status) {
