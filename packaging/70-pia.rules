@@ -1,0 +1,22 @@
+# pia · Puente de Impresión Automática
+# Gives the logged-in user (systemd-logind "uaccess" ACL) access to USB
+# thermal printers, without root and without per-vendor rules.
+#
+# Must sort before 73-seat-late.rules, which is what applies "uaccess" —
+# hence the 70- prefix (a 99- rule's TAG+="uaccess" is silently ignored).
+#
+# Interface classes aren't attributes of the usb_device node libusb opens,
+# so match them through ID_USB_INTERFACES (":ccsspp:" per interface).
+
+# Raw device node for libusb: any device with a Printer-class (07) interface.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ENV{ID_USB_INTERFACES}=="*:07????:*", MODE="0664", GROUP="plugdev", TAG+="uaccess"
+
+# Kernel usblp node (/dev/usb/lpN) for those same printers.
+SUBSYSTEM=="usbmisc", KERNEL=="lp[0-9]*", TAG+="uaccess"
+
+# Chinese ESC/POS printers (Xprinter, Gprinter, POS-58/80 clones...) built on
+# generic MCUs, whose firmware reports a vendor-specific (ff) interface...
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0416|0483|0fe6|1fc9|20d1|28e9|4b43|6868", ENV{ID_USB_INTERFACES}=="*:ff????:*", TAG+="uaccess"
+
+# ...or shows up as a USB virtual COM port (ttyACM) for the serial tab.
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="0416|0483|0fe6|1fc9|20d1|28e9|4b43|6868", TAG+="uaccess"

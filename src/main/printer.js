@@ -302,11 +302,16 @@ async function printUsbOnce(deviceKey, data) {
     return await printUsbWindowsPort(data);
   }
 
-  const { usb } = require('usb');
-
   const [vendorStr, productStr] = deviceKey.split(':');
   const vendorId = parseInt(vendorStr, 16);
   const productId = parseInt(productStr, 16);
+
+  if (process.platform === 'linux') {
+    const lpNode = findLinuxLpNode(vendorId, productId);
+    if (lpNode) return await printLinuxLpNode(lpNode, data);
+  }
+
+  const { usb } = require('usb');
 
   const device = usb.getDeviceList().find((d) => {
     const desc = d.deviceDescriptor;
@@ -317,9 +322,19 @@ async function printUsbOnce(deviceKey, data) {
     throw new Error(`Dispositivo USB ${deviceKey} no encontrado. Verifica que este conectado.`);
   }
 
-  device.open();
+  try {
+    device.open();
+  } catch (err) {
+    if (/LIBUSB_ERROR_ACCESS/.test(err.message)) {
+      throw new Error(
+        `Sin permiso para abrir la impresora USB ${deviceKey}. Reinstala el agente (instala la regla udev) y vuelve a conectar la impresora.`,
+      );
+    }
+    throw err;
+  }
 
   let iface = null;
+  let detachedKernelDriver = false;
   try {
     iface = findPrinterInterface(device);
     if (!iface) {
@@ -328,6 +343,7 @@ async function printUsbOnce(deviceKey, data) {
 
     if (iface.isKernelDriverActive()) {
       iface.detachKernelDriver();
+      detachedKernelDriver = true;
     }
 
     iface.claim();
@@ -359,6 +375,10 @@ async function printUsbOnce(deviceKey, data) {
     // device stays busy and the next print (or another app) cannot claim it.
     if (iface) {
       await new Promise((resolve) => iface.release(true, () => resolve()));
+      // Hand the printer back to usblp so /dev/usb/lpN (and CUPS) keep working.
+      if (detachedKernelDriver) {
+        try { iface.attachKernelDriver(); } catch { /* ignore */ }
+      }
     }
     try {
       device.close();
@@ -412,27 +432,117 @@ async function printUsbWindowsPort(data) {
   return { success: true };
 }
 
+// USB vendor ids of the MCUs that cheap Chinese ESC/POS printers (Xprinter,
+// Gprinter, POS-58/80 clones, Rongta, Caysn...) are built on. Most of them
+// report the standard Printer class (7) and need nothing special, but some
+// firmwares report a vendor-specific class (0xFF) instead — for these vendors
+// only, an interface like that with a bulk OUT endpoint is taken as a printer.
+const GENERIC_PRINTER_VENDOR_IDS = new Set([
+  0x0416, // Winbond / Nuvoton
+  0x0483, // STMicroelectronics
+  0x0fe6, // ICS Advent
+  0x1fc9, // NXP
+  0x20d1, // Rongta
+  0x28e9, // GigaDevice
+  0x4b43, // Caysn
+  0x6868, // Zjiang / Gainscha
+]);
+
 /**
- * Find the printer interface (class 7) in a USB device.
+ * Returns the alt-setting descriptor of the printer interface of a USB
+ * device: the Printer class (7), or for known printer-chip vendors a
+ * vendor-specific (0xFF) interface with a bulk OUT endpoint.
  */
-function findPrinterInterface(device) {
+function findPrinterAltSetting(device) {
   try {
     const configDesc = device.configDescriptor;
     if (!configDesc || !configDesc.interfaces) {
       return null;
     }
 
-    for (const ifaceGroup of configDesc.interfaces) {
-      for (const alt of ifaceGroup) {
-        if (alt.bInterfaceClass === 7) {
-          return device.interface(alt.bInterfaceNumber);
-        }
-      }
-    }
+    const alts = configDesc.interfaces.flat();
+    const printerClass = alts.find((alt) => alt.bInterfaceClass === 7);
+    if (printerClass) return printerClass;
+
+    if (!GENERIC_PRINTER_VENDOR_IDS.has(device.deviceDescriptor.idVendor)) return null;
+    return alts.find(
+      (alt) =>
+        alt.bInterfaceClass === 0xff &&
+        alt.endpoints.some((ep) => !(ep.bEndpointAddress & 0x80) && (ep.bmAttributes & 0x03) === 0x02),
+    ) || null;
   } catch {
     // Device may not be accessible
   }
   return null;
+}
+
+/**
+ * Find the printer interface in a USB device.
+ */
+function findPrinterInterface(device) {
+  const alt = findPrinterAltSetting(device);
+  return alt ? device.interface(alt.bInterfaceNumber) : null;
+}
+
+/**
+ * Linux: the kernel's usblp driver exposes Printer-class devices as
+ * /dev/usb/lpN. Writing there needs no libusb access to the raw device node
+ * (which is root-only unless a udev rule grants it) and doesn't steal the
+ * printer from usblp/CUPS. Returns the node for vendorId:productId if it
+ * exists and is writable by this user, otherwise null.
+ */
+function findLinuxLpNode(vendorId, productId) {
+  const fs = require('fs');
+  const path = require('path');
+  const base = '/sys/class/usbmisc';
+
+  let names;
+  try {
+    names = fs.readdirSync(base).filter((name) => /^lp\d+$/.test(name));
+  } catch {
+    return null;
+  }
+
+  for (const name of names) {
+    try {
+      // .../usbmisc/lpN/device is the USB interface; its parent is the device.
+      const usbDevice = path.join(fs.realpathSync(path.join(base, name, 'device')), '..');
+      const vid = parseInt(fs.readFileSync(path.join(usbDevice, 'idVendor'), 'utf8'), 16);
+      const pid = parseInt(fs.readFileSync(path.join(usbDevice, 'idProduct'), 'utf8'), 16);
+      if (vid !== vendorId || pid !== productId) continue;
+
+      const node = `/dev/usb/${name}`;
+      fs.accessSync(node, fs.constants.W_OK);
+      return node;
+    } catch {
+      // Not this one, or not writable
+    }
+  }
+  return null;
+}
+
+async function printLinuxLpNode(node, data) {
+  const fs = require('fs');
+
+  const handle = await fs.promises.open(node, 'w');
+  try {
+    let timer;
+    await Promise.race([
+      handle.write(data),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Impresion USB agoto el tiempo de espera (${USB_TIMEOUT}ms)`)),
+          USB_TIMEOUT,
+        );
+      }),
+    ]).finally(() => clearTimeout(timer));
+  } catch (err) {
+    throw new Error(`Error de escritura en ${node}: ${err.message}`);
+  } finally {
+    handle.close().catch(() => { /* ignore */ });
+  }
+
+  return { success: true };
 }
 
 /**
@@ -485,18 +595,7 @@ async function listUsbPrinters() {
           continue;
         }
 
-        let isPrinter = false;
-        for (const ifaceGroup of configDesc.interfaces) {
-          for (const alt of ifaceGroup) {
-            if (alt.bInterfaceClass === 7) {
-              isPrinter = true;
-              break;
-            }
-          }
-          if (isPrinter) break;
-        }
-
-        if (isPrinter) {
+        if (findPrinterAltSetting(device)) {
           const deviceKey = desc.idVendor.toString(16).padStart(4, '0') + ':' + desc.idProduct.toString(16).padStart(4, '0');
           let manufacturer = '';
           let product = '';
@@ -512,6 +611,12 @@ async function listUsbPrinters() {
             device.close();
           } catch {
             try { device.close(); } catch { /* ignore */ }
+          }
+
+          // Opening the raw device needs udev permissions; sysfs has the
+          // same strings and is world-readable.
+          if (process.platform === 'linux' && !manufacturer && !product) {
+            ({ manufacturer, product } = readLinuxUsbStrings(device));
           }
 
           printers.push({
@@ -531,6 +636,19 @@ async function listUsbPrinters() {
   } catch {
     return [];
   }
+}
+
+function readLinuxUsbStrings(device) {
+  const fs = require('fs');
+  const sysfsDir = `/sys/bus/usb/devices/${device.busNumber}-${(device.portNumbers || []).join('.')}`;
+  const read = (file) => {
+    try {
+      return fs.readFileSync(`${sysfsDir}/${file}`, 'utf8').trim();
+    } catch {
+      return '';
+    }
+  };
+  return { manufacturer: read('manufacturer'), product: read('product') };
 }
 
 function getStringDescriptorAsync(device, index) {
@@ -615,7 +733,9 @@ function generateTestPage() {
   data += ESC + '@';
   data += ESC + 'a\x01';
   data += GS + '!\x11';
-  data += 'POS Print Bridge\n';
+  data += 'pia\n';
+  data += GS + '!\x00';
+  data += 'Puente de Impresion Automatica\n';
   data += GS + '!\x00';
   data += '--------------------------------\n';
   data += 'Impresion de prueba\n';
