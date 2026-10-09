@@ -1,6 +1,6 @@
 {
   "name": "pia",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "pia · Puente de Impresión Automática. Agente local de impresion ESC/POS que conecta un sistema POS con impresoras termicas USB o de red",
   "license": "MIT",
   "author": {
