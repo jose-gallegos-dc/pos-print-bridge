@@ -9,6 +9,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import InlineMessage from './InlineMessage';
 import { useAutoDismissMessage } from '../hooks/useAutoDismissMessage';
 import type { SerialPortInfo } from '../../../preload';
+import { EMPTY_SELECT_SLOT_PROPS, monoFontFamily, monoInputSx } from '../theme';
 
 interface Props {
   portPath: string;
@@ -43,8 +44,12 @@ export default function SerialPrintSection({ portPath, onChange }: Props) {
     [refresh],
   );
 
+  // A saved port that's no longer present isn't shown as selected: the
+  // field falls back to the empty option, which says what was (not) found.
+  const selected = ports.some((p) => p.path === portPath) ? portPath : '';
+
   async function handleTestPrint() {
-    if (!portPath) {
+    if (!selected) {
       setMessage({ type: 'error', text: 'Selecciona un puerto serial' });
       return;
     }
@@ -52,7 +57,7 @@ export default function SerialPrintSection({ portPath, onChange }: Props) {
     setSending(true);
 
     try {
-      await window.agent.saveConfig({ usbPortPath: portPath });
+      await window.agent.saveConfig({ usbPortPath: selected });
       const result = await window.agent.testPrint('serial');
       setMessage({
         type: result.success ? 'success' : 'error',
@@ -73,14 +78,16 @@ export default function SerialPrintSection({ portPath, onChange }: Props) {
           size="small"
           fullWidth
           label="Puerto serial"
-          value={portPath}
+          sx={monoInputSx}
+          slotProps={EMPTY_SELECT_SLOT_PROPS}
+          value={selected}
           onChange={(e) => onChange(e.target.value)}
         >
           <MenuItem value="">
             {loading ? 'Buscando puertos...' : ports.length === 0 ? 'No se detectaron puertos' : 'Seleccionar puerto...'}
           </MenuItem>
           {ports.map((p) => (
-            <MenuItem key={p.path} value={p.path}>
+            <MenuItem key={p.path} value={p.path} sx={{ fontFamily: monoFontFamily }}>
               {p.manufacturer !== 'Desconocido' ? `${p.path} (${p.manufacturer})` : p.path}
             </MenuItem>
           ))}
@@ -93,7 +100,7 @@ export default function SerialPrintSection({ portPath, onChange }: Props) {
         <Button
           variant="contained"
           startIcon={<PrintIcon />}
-          disabled={sending || !portPath}
+          disabled={sending || !selected}
           onClick={handleTestPrint}
         >
           {sending ? 'Enviando...' : 'Imprimir prueba'}

@@ -9,6 +9,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import InlineMessage from './InlineMessage';
 import { useAutoDismissMessage } from '../hooks/useAutoDismissMessage';
 import type { UsbPrinterInfo, WindowsPrinterInfo } from '../../../preload';
+import { EMPTY_SELECT_SLOT_PROPS, monoFontFamily, monoInputSx } from '../theme';
 
 interface Props {
   deviceKey: string;
@@ -56,23 +57,20 @@ function WindowsSection({ winPrinterName, onWinPrinterChange }: Props) {
     [refresh],
   );
 
-  const printerMissing = !loading && !!winPrinterName && !printers.some((p) => p.name === winPrinterName);
+  // A saved printer that's no longer installed isn't shown as selected: the
+  // field falls back to the empty option, which says what was (not) found.
+  const selected = printers.some((p) => p.name === winPrinterName) ? winPrinterName : '';
 
   async function handleTestPrint() {
-    if (!winPrinterName) {
+    if (!selected) {
       setMessage({ type: 'error', text: 'Selecciona la impresora instalada en Windows' });
-      return;
-    }
-
-    if (printerMissing) {
-      setMessage({ type: 'error', text: 'La impresora seleccionada ya no esta instalada. Elige otra de la lista.' });
       return;
     }
 
     setSending(true);
 
     try {
-      await window.agent.saveConfig({ winPrinterName });
+      await window.agent.saveConfig({ winPrinterName: selected });
       const result = await window.agent.testPrint('usb');
       setMessage({
         type: result.success ? 'success' : 'error',
@@ -93,7 +91,9 @@ function WindowsSection({ winPrinterName, onWinPrinterChange }: Props) {
           size="small"
           fullWidth
           label="Impresora en Windows"
-          value={winPrinterName}
+          sx={monoInputSx}
+          slotProps={EMPTY_SELECT_SLOT_PROPS}
+          value={selected}
           onChange={(e) => onWinPrinterChange(e.target.value)}
         >
           <MenuItem value="">
@@ -104,11 +104,10 @@ function WindowsSection({ winPrinterName, onWinPrinterChange }: Props) {
                 : 'Seleccionar impresora...'}
           </MenuItem>
           {printers.map((p) => (
-            <MenuItem key={p.name} value={p.name}>
+            <MenuItem key={p.name} value={p.name} sx={{ fontFamily: monoFontFamily }}>
               {p.name} [{p.portName}]
             </MenuItem>
           ))}
-          {printerMissing && <MenuItem value={winPrinterName}>{winPrinterName} (ya no instalada)</MenuItem>}
         </TextField>
         <IconButton onClick={refresh} disabled={loading} title="Refrescar">
           <RefreshIcon />
@@ -118,20 +117,13 @@ function WindowsSection({ winPrinterName, onWinPrinterChange }: Props) {
         <Button
           variant="contained"
           startIcon={<PrintIcon />}
-          disabled={sending || !winPrinterName || printerMissing}
+          disabled={sending || !selected}
           onClick={handleTestPrint}
         >
           {sending ? 'Enviando...' : 'Imprimir prueba'}
         </Button>
       </Stack>
-      <InlineMessage
-        message={
-          message ??
-          (printerMissing
-            ? { type: 'error', text: 'La impresora configurada ya no esta instalada. Elige otra de la lista.' }
-            : null)
-        }
-      />
+      <InlineMessage message={message} />
     </>
   );
 }
@@ -168,23 +160,20 @@ function LibusbSection({ deviceKey, onChange }: Props) {
     [refresh],
   );
 
-  const deviceMissing = !loading && !!deviceKey && !printers.some((p) => p.deviceKey === deviceKey);
+  // A saved printer that's no longer connected isn't shown as selected: the
+  // field falls back to the empty option, which says what was (not) found.
+  const selected = printers.some((p) => p.deviceKey === deviceKey) ? deviceKey : '';
 
   async function handleTestPrint() {
-    if (!deviceKey) {
+    if (!selected) {
       setMessage({ type: 'error', text: 'Selecciona una impresora USB' });
-      return;
-    }
-
-    if (deviceMissing) {
-      setMessage({ type: 'error', text: 'La impresora seleccionada ya no esta conectada. Elige otra de la lista.' });
       return;
     }
 
     setSending(true);
 
     try {
-      await window.agent.saveConfig({ usbDeviceKey: deviceKey });
+      await window.agent.saveConfig({ usbDeviceKey: selected });
       const result = await window.agent.testPrint('usb');
       setMessage({
         type: result.success ? 'success' : 'error',
@@ -205,21 +194,20 @@ function LibusbSection({ deviceKey, onChange }: Props) {
           size="small"
           fullWidth
           label="Impresora USB"
-          value={deviceKey}
+          sx={monoInputSx}
+          slotProps={EMPTY_SELECT_SLOT_PROPS}
+          value={selected}
           onChange={(e) => onChange(e.target.value)}
         >
           <MenuItem value="">
             {loading ? 'Buscando dispositivos...' : printers.length === 0 ? 'No se detectaron impresoras USB' : 'Seleccionar impresora...'}
           </MenuItem>
           {printers.map((p) => (
-            <MenuItem key={p.deviceKey} value={p.deviceKey}>
+            <MenuItem key={p.deviceKey} value={p.deviceKey} sx={{ fontFamily: monoFontFamily }}>
               {(p.product || p.manufacturer ? `${p.product || 'Impresora'}${p.manufacturer ? ` (${p.manufacturer})` : ''}` : 'Impresora USB')}{' '}
               [{p.deviceKey}]
             </MenuItem>
           ))}
-          {deviceMissing && (
-            <MenuItem value={deviceKey}>[{deviceKey}] (desconectada)</MenuItem>
-          )}
         </TextField>
         <IconButton onClick={refresh} disabled={loading} title="Refrescar">
           <RefreshIcon />
@@ -229,20 +217,13 @@ function LibusbSection({ deviceKey, onChange }: Props) {
         <Button
           variant="contained"
           startIcon={<PrintIcon />}
-          disabled={sending || !deviceKey || deviceMissing}
+          disabled={sending || !selected}
           onClick={handleTestPrint}
         >
           {sending ? 'Enviando...' : 'Imprimir prueba'}
         </Button>
       </Stack>
-      <InlineMessage
-        message={
-          message ??
-          (deviceMissing
-            ? { type: 'error', text: 'La impresora configurada ya no esta conectada. Elige otra de la lista.' }
-            : null)
-        }
-      />
+      <InlineMessage message={message} />
     </>
   );
 }
