@@ -1,10 +1,12 @@
 # POS Print Bridge
 
+> La aplicacion se distribuye como **pia · Puente de Impresion Automatica** (paquete `pia`); este repositorio conserva el nombre `pos-print-bridge`.
+
 Agente de escritorio ligero (Windows, Ubuntu y Fedora) que actua como puente entre un sistema de punto de venta (POS) y las impresoras de tickets.
 
 Corre en segundo plano en la maquina del POS y levanta un servidor HTTP local (por defecto en el puerto `5100`, configurable). Cuando el sistema de venta necesita imprimir un ticket, envia una peticion HTTP al agente, y este traduce y envia los comandos ESC/POS a la impresora correspondiente:
 
-- **Impresoras termicas USB**, mediante acceso directo al dispositivo (o al spooler nativo en Windows).
+- **Impresoras termicas USB**, mediante acceso directo al dispositivo (o al spooler nativo en Windows). Incluye marcas genericas chinas (Xprinter, Gprinter, clones POS-58/80...); en Linux usa el nodo `/dev/usb/lpN` del kernel cuando existe.
 - **Impresoras de red**, via TCP crudo (puerto `9100` / RAW).
 - **Impresoras seriales** (RS232 / adaptador USB-Serial).
 
@@ -29,7 +31,7 @@ Incluye una interfaz de configuracion para hacer pruebas de impresion, elegir la
 Sistema POS (web / escritorio)
         │ HTTP POST http://127.0.0.1:5100/print/...
         ▼
-POS Print Bridge
+pia (POS Print Bridge)
  ├─ Servidor HTTP (127.0.0.1, solo local)
  ├─ UI de configuracion (React + MUI)
  └─ Motor de impresion

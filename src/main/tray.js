@@ -7,6 +7,8 @@ function getAssetsPath() {
     : path.join(__dirname, '../../assets');
 }
 
+const APP_TITLE = 'pia · Puente de Impresión Automática';
+
 const STATUS_LABELS = {
   running: 'Ejecutando',
   error: 'Error',
@@ -25,12 +27,12 @@ function createTray(showWindowFn, app) {
   icon = icon.resize({ width: 16, height: 16 });
 
   const tray = new Tray(icon);
-  tray.setToolTip('POS Print Bridge');
+  tray.setToolTip(APP_TITLE);
 
   // Keep these closed over so updateTrayStatus() can rebuild the context
   // menu later — Tray itself has no way to hand them back to us.
   tray._setStatus = (status) => {
-    tray.setToolTip(`POS Print Bridge - ${STATUS_LABELS[status] || status}`);
+    tray.setToolTip(`${APP_TITLE} - ${STATUS_LABELS[status] || status}`);
     updateTrayMenu(tray, showWindowFn, app, status);
   };
   tray._setStatus('starting');
@@ -51,7 +53,7 @@ function updateTrayStatus(tray, status) {
 
 function updateTrayMenu(tray, showWindowFn, app, status) {
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'POS Print Bridge', enabled: false },
+    { label: APP_TITLE, enabled: false },
     { type: 'separator' },
     { label: `Estado: ${STATUS_LABELS[status] || status}`, enabled: false },
     { type: 'separator' },
@@ -70,13 +72,14 @@ function updateTrayMenu(tray, showWindowFn, app, status) {
 }
 
 function createFallbackIcon() {
+  // Verde caja (#157A4A)
   const size = 16;
   const canvas = Buffer.alloc(size * size * 4);
 
   for (let i = 0; i < size * size; i++) {
-    canvas[i * 4] = 0x1e;
-    canvas[i * 4 + 1] = 0x3a;
-    canvas[i * 4 + 2] = 0x8a;
+    canvas[i * 4] = 0x15;
+    canvas[i * 4 + 1] = 0x7a;
+    canvas[i * 4 + 2] = 0x4a;
     canvas[i * 4 + 3] = 0xff;
   }
 

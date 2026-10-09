@@ -32,7 +32,15 @@ function resolveLinuxExecPath() {
 function applyAutostart(enable) {
   if (process.platform === 'linux') {
     const autostartDir = path.join(os.homedir(), '.config', 'autostart');
-    const desktopFile = path.join(autostartDir, 'pos-print-bridge.desktop');
+    const desktopFile = path.join(autostartDir, 'pia.desktop');
+
+    // Entry written by releases named "POS Print Bridge" — its Exec path no
+    // longer exists after the rename, and keeping it would launch twice.
+    try {
+      fs.unlinkSync(path.join(autostartDir, 'pos-print-bridge.desktop'));
+    } catch {
+      // File may not exist — safe to ignore
+    }
 
     if (enable) {
       fs.mkdirSync(autostartDir, { recursive: true });
@@ -41,7 +49,8 @@ function applyAutostart(enable) {
       const content = [
         '[Desktop Entry]',
         'Type=Application',
-        'Name=POS Print Bridge',
+        'Name=pia',
+        'Comment=Puente de Impresión Automática',
         `Exec=${execEntry}`,
         'Terminal=false',
         'Hidden=false',

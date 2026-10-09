@@ -99,7 +99,7 @@ function createServer(port, store) {
   });
 
   server = app.listen(port, '127.0.0.1', () => {
-    console.log(`POS Print Bridge escuchando en http://127.0.0.1:${port}`);
+    console.log(`pia escuchando en http://127.0.0.1:${port}`);
   });
 
   server.on('error', (err) => {

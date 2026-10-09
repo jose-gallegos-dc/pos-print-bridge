@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeImage, shell } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import Store from 'electron-store';
@@ -32,7 +33,10 @@ import {
 const WINDOW_WIDTH = 480;
 const WINDOW_HEIGHT = 720;
 
-app.setName('POS Print Bridge');
+const APP_TITLE = 'Puente de Impresión Automática';
+
+app.setName('pia');
+migrateLegacyUserData();
 
 // This is a background agent that must keep the HTTP print server alive
 // indefinitely. It has no need for GPU-accelerated rendering (a small
@@ -51,6 +55,25 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   console.error('Promesa rechazada sin manejar:', reason);
 });
+
+/**
+ * Releases up to 1.0.4 were named "POS Print Bridge", and Electron keys the
+ * userData folder (where electron-store keeps config.json) by app name.
+ * Carry the old config over once so a renamed install keeps its port and
+ * printer choices.
+ */
+function migrateLegacyUserData() {
+  try {
+    const newConfig = path.join(app.getPath('userData'), 'config.json');
+    const legacyConfig = path.join(app.getPath('appData'), 'POS Print Bridge', 'config.json');
+    if (!fs.existsSync(newConfig) && fs.existsSync(legacyConfig)) {
+      fs.mkdirSync(path.dirname(newConfig), { recursive: true });
+      fs.copyFileSync(legacyConfig, newConfig);
+    }
+  } catch (err) {
+    console.error('No se pudo migrar la configuracion anterior:', err);
+  }
+}
 
 const store = new Store({
   defaults: {
@@ -78,6 +101,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
+    title: APP_TITLE,
     resizable: false,
     maximizable: false,
     minimizable: true,

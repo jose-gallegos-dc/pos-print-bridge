@@ -1,7 +1,7 @@
 {
-  "name": "pos-print-bridge",
+  "name": "pia",
   "version": "1.0.4",
-  "description": "Agente local de impresion ESC/POS que conecta un sistema POS con impresoras termicas USB o de red",
+  "description": "pia · Puente de Impresión Automática. Agente local de impresion ESC/POS que conecta un sistema POS con impresoras termicas USB o de red",
   "license": "MIT",
   "author": {
     "name": "José Gallegos",
@@ -20,6 +20,8 @@
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
+    "@fontsource/archivo": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@mui/icons-material": "^6.1.6",
     "@mui/material": "^6.1.6",
     "cors": "^2.8.5",
@@ -54,7 +56,7 @@
   },
   "build": {
     "appId": "com.posprintbridge.app",
-    "productName": "POS Print Bridge",
+    "productName": "pia",
     "afterPack": "./build/afterPack.js",
     "publish": {
       "provider": "github",
@@ -70,8 +72,8 @@
     },
     "extraResources": [
       {
-        "from": "packaging/99-pos-print-bridge.rules",
-        "to": "99-pos-print-bridge.rules"
+        "from": "packaging/70-pia.rules",
+        "to": "70-pia.rules"
       },
       {
         "from": "assets",
@@ -97,10 +99,18 @@
       "description": "Agente de impresion ESC/POS para punto de venta"
     },
     "deb": {
-      "afterInstall": "packaging/postinstall.sh"
+      "afterInstall": "packaging/postinstall.sh",
+      "fpm": [
+        "--replaces=pos-print-bridge",
+        "--conflicts=pos-print-bridge"
+      ]
     },
     "rpm": {
-      "afterInstall": "packaging/postinstall.sh"
+      "afterInstall": "packaging/postinstall.sh",
+      "fpm": [
+        "--replaces=pos-print-bridge",
+        "--conflicts=pos-print-bridge"
+      ]
     }
   }
 }

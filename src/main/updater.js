@@ -48,7 +48,7 @@ function checkGithubReleaseManually() {
   return new Promise((resolve) => {
     const req = https.get(
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
-      { headers: { 'User-Agent': 'pos-print-bridge' } },
+      { headers: { 'User-Agent': 'pia' } },
       (res) => {
         let body = '';
         res.on('data', (chunk) => (body += chunk));

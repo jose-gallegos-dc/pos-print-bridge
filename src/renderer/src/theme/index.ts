@@ -1,18 +1,44 @@
-import { createTheme } from '@mui/material/styles';
+import { alpha, createTheme } from '@mui/material/styles';
+import '@fontsource/archivo/400.css';
+import '@fontsource/archivo/500.css';
+import '@fontsource/archivo/600.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/600.css';
+import '@fontsource/jetbrains-mono/700.css';
+
+// Brand palette (kit de marca pia).
+export const brand = {
+  verdeCaja: '#157A4A',
+  lima: '#B8E62E',
+  bosque: '#0F2418',
+  papel: '#F7F4EC',
+};
+
+// Monospaced like a thermal printer's output: used for the app name,
+// ports and printer names.
+export const monoFontFamily = '"JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace';
 
 export const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1E3A8A',
-      light: '#5B8DEF',
-    },
-    secondary: {
-      main: '#0EA5E9',
+      main: brand.verdeCaja,
       contrastText: '#FFFFFF',
     },
+    secondary: {
+      main: brand.lima,
+      contrastText: brand.bosque,
+    },
+    success: {
+      main: brand.verdeCaja,
+    },
+    text: {
+      primary: brand.bosque,
+      secondary: alpha(brand.bosque, 0.65),
+    },
+    divider: alpha(brand.bosque, 0.12),
     background: {
-      default: '#F1F5F9',
+      default: brand.papel,
       paper: '#FFFFFF',
     },
   },
@@ -20,15 +46,9 @@ export const theme = createTheme({
     borderRadius: 10,
   },
   typography: {
-    fontFamily: [
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      'sans-serif',
-    ].join(','),
+    fontFamily: ['Archivo', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'].join(','),
     fontSize: 13,
-    h1: { fontSize: '1.1rem', fontWeight: 600 },
+    h1: { fontFamily: monoFontFamily, fontSize: '1.1rem', fontWeight: 700 },
   },
   components: {
     MuiButton: {
@@ -44,3 +64,13 @@ export const theme = createTheme({
     },
   },
 });
+
+// For TextFields whose value is a port, IP or printer name.
+export const monoInputSx = { '& .MuiInputBase-input': { fontFamily: monoFontFamily } };
+
+// Selects whose empty option ("No se detectaron...", "Seleccionar...") must
+// show in the field itself instead of leaving it blank under the label.
+export const EMPTY_SELECT_SLOT_PROPS = {
+  select: { displayEmpty: true },
+  inputLabel: { shrink: true },
+};

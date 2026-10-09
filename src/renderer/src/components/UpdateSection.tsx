@@ -6,6 +6,8 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import type { UpdateStatus } from '../../../preload';
+import { alpha } from '@mui/material/styles';
+import { brand } from '../theme';
 
 export default function UpdateSection() {
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' });
@@ -49,7 +51,7 @@ export default function UpdateSection() {
         px: 1.5,
         py: 1,
         borderRadius: 2,
-        bgcolor: 'rgba(30, 58, 138, 0.06)',
+        bgcolor: 'alpha(brand.verdeCaja, 0.08)',
       }}
     >
       <Stack direction="row" spacing={1} alignItems="center">

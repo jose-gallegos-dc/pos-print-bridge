@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import FormHelperText from '@mui/material/FormHelperText';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { monoInputSx } from '../theme';
 
 interface Props {
   port: number;
@@ -39,6 +40,7 @@ export default function ConfigSection({
           <Stack direction="row" alignItems="center" spacing={2}>
             <TextField
               label="Puerto del servidor HTTP"
+              sx={monoInputSx}
               size="small"
               type="number"
               value={port}
