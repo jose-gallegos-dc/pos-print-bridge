@@ -738,8 +738,22 @@ async function printSerialOnce(portPath, data) {
   });
 }
 
+// PC850 bytes for the Spanish characters the test page prints. Anything not
+// listed is plain ASCII and passes through as-is.
+const PC850_SPANISH = {
+  'á': 0xa0, 'é': 0x82, 'í': 0xa1, 'ó': 0xa2, 'ú': 0xa3, 'ü': 0x81, 'ñ': 0xa4,
+  'Á': 0xb5, 'É': 0x90, 'Í': 0xd6, 'Ó': 0xe0, 'Ú': 0xe9, 'Ü': 0x9a, 'Ñ': 0xa5,
+  '¿': 0xa8, '¡': 0xad,
+};
+
+function encodePc850(text) {
+  return Buffer.from(Array.from(text, (ch) => PC850_SPANISH[ch] ?? ch.charCodeAt(0)));
+}
+
 /**
- * Generate a simple ESC/POS test page.
+ * Generate a simple ESC/POS test page. It selects PC850 and prints a line
+ * with every Spanish accent, ñ, ¿ and ¡, so a wrong code page (or a Chinese
+ * printer still in Chinese mode) is obvious on paper.
  */
 function generateTestPage() {
   const ESC = '\x1B';
@@ -748,25 +762,31 @@ function generateTestPage() {
   let data = '';
 
   data += ESC + '@';
+  data += ESC + 't\x02'; // PC850 (Multilingual Latin I)
   data += ESC + 'a\x01';
   data += GS + '!\x11';
   data += 'pia\n';
   data += GS + '!\x00';
-  data += 'Puente de Impresion Automatica\n';
+  data += 'Puente de Impresión Automática\n';
   data += GS + '!\x00';
   data += '--------------------------------\n';
-  data += 'Impresion de prueba\n';
+  data += 'Impresión de prueba\n';
   data += 'Test print successful\n';
+  data += '--------------------------------\n';
+  data += 'Caracteres en español:\n';
+  data += 'á é í ó ú ü ñ\n';
+  data += 'Á É Í Ó Ú Ü Ñ\n';
+  data += '¿Año? ¡Señal! Pingüino\n';
   data += '--------------------------------\n';
   data += new Date().toLocaleString('es-MX') + '\n';
   data += '\n';
-  data += 'La impresora esta configurada\n';
+  data += 'La impresora está configurada\n';
   data += 'correctamente.\n';
   data += '--------------------------------\n';
   data += '\n\n\n';
   data += GS + 'V\x00';
 
-  return Buffer.from(data, 'binary');
+  return encodePc850(data);
 }
 
 export {
