@@ -46,6 +46,23 @@ function withQueue(key, fn) {
   return job;
 }
 
+// Cheap Chinese printers (Xprinter and similar) boot in Chinese character
+// mode, where every byte >= 0x80 starts a two-byte GB18030 glyph — so the
+// PC850 accents the POS sends (á, é, ñ, ¿...) come out as Chinese characters.
+// FS . cancels that mode; printers without it (Epson, etc.) ignore it. It goes
+// after a leading ESC @ because on some models the reset re-enables Chinese
+// mode; the POS's own ESC t (code page) still follows and applies normally.
+const ESC_INIT = Buffer.from([0x1b, 0x40]);
+const FS_CANCEL_CHINESE = Buffer.from([0x1c, 0x2e]);
+
+function withChineseModeOff(data) {
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  if (buf.subarray(0, 2).equals(ESC_INIT)) {
+    return Buffer.concat([ESC_INIT, FS_CANCEL_CHINESE, buf.subarray(2)]);
+  }
+  return Buffer.concat([FS_CANCEL_CHINESE, buf]);
+}
+
 // ─── Windows Spooler — persistent PowerShell process ─────────────────────────
 //
 // Spawned once on first print (or pre-warmed on app start).
@@ -240,7 +257,7 @@ function cleanupWinSpooler() {
  */
 function printNetwork(host, port, data) {
   return withQueue(`network:${host}:${port}`, () =>
-    withRetry('Impresion de red', () => printNetworkOnce(host, port, data)),
+    withRetry('Impresion de red', () => printNetworkOnce(host, port, withChineseModeOff(data))),
   );
 }
 
@@ -284,7 +301,7 @@ function printNetworkOnce(host, port, data) {
 // jobs race each other. On Linux/macOS there's normally one physical USB
 // printer configured anyway, so sharing the key costs nothing in practice.
 function printUsb(deviceKey, data) {
-  return withQueue('usb', () => withRetry('Impresion USB', () => printUsbOnce(deviceKey, data)));
+  return withQueue('usb', () => withRetry('Impresion USB', () => printUsbOnce(deviceKey, withChineseModeOff(data))));
 }
 
 /**
@@ -687,7 +704,7 @@ async function listSerialPorts() {
  */
 function printSerial(portPath, data) {
   return withQueue(`serial:${portPath}`, () =>
-    withRetry('Impresion serial', () => printSerialOnce(portPath, data)),
+    withRetry('Impresion serial', () => printSerialOnce(portPath, withChineseModeOff(data))),
   );
 }
 
